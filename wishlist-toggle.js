@@ -1,5 +1,5 @@
 /**
- * Wishlist Toggle 1.0.0
+ * Wishlist Toggle 1.0.2
  * Copyright 2024 Pixelker
  * Released under the MIT License
  * Released on: November 4, 2024
