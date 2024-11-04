@@ -1,5 +1,5 @@
 /**
- * Share Toggle 1.0.1
+ * Share Toggle 1.0.2
  * Copyright 2024 Pixelker
  * Released under the MIT License
  * Released on: November 4, 2024
