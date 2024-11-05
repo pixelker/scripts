@@ -32,6 +32,9 @@ document.addEventListener("DOMContentLoaded", () => {
         case "reddit":
           shareOnReddit();
           break;
+        case "linkedin": // Nuevo caso para LinkedIn
+          shareOnLinkedIn();
+          break;
         default:
           console.log("No action defined for this share type.");
       }
@@ -53,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function shareByEmail() {
     const url = window.location.href;
     window.open(`mailto:?subject=¡Echa un vistazo a esto!&body=Hola,%0A%0ACreo que podría interesarte, échale un vistazo: ${encodeURIComponent(url)}`);
-}
+  }
 
   function shareOnX() {
     const url = window.location.href;
@@ -68,5 +71,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function shareOnReddit() {
     const url = window.location.href;
     window.open(`https://www.reddit.com/submit?url=${encodeURIComponent(url)}`);
+  }
+
+  function shareOnLinkedIn() { // Nueva función para compartir en LinkedIn
+    const url = window.location.href;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`);
   }
 });
