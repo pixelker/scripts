@@ -7,6 +7,12 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   const shareButtons = document.querySelectorAll("[pxl-share]");
+  const urlDisplay = document.querySelector("[pxl-share='url']"); // Selecciona el elemento para mostrar la URL
+
+  // Muestra la URL en el elemento al cargar la página
+  if (urlDisplay) {
+    urlDisplay.textContent = window.location.href;
+  }
 
   shareButtons.forEach((button) => {
     button.addEventListener("click", (event) => {
@@ -34,9 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
         case "linkedin":
           shareOnLinkedIn();
-          break;
-        case "url":
-          displayURL(event.target); // Muestra la URL en el elemento
           break;
         default:
           console.log("No action defined for this share type.");
@@ -79,10 +82,5 @@ document.addEventListener("DOMContentLoaded", () => {
   function shareOnLinkedIn() {
     const url = window.location.href;
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`);
-  }
-
-  function displayURL(element) {
-    const url = window.location.href;
-    element.textContent = url; // Muestra la URL en el elemento
   }
 });
