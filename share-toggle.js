@@ -43,13 +43,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function shareOnWhatsApp() {
     const url = window.location.href;
-    window.open(`https://wa.me/?text=${encodeURIComponent(url)}`);
+    const message = "Creo que podría interesarte, échale un vistazo: ";
+    const fullMessage = `${message}${encodeURIComponent(url)}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(fullMessage)}`);
   }
 
   function copyLink() {
     const url = window.location.href;
     navigator.clipboard.writeText(url)
-      .then(() => alert("Enlace copiado al portapapeles!"))
+      .then(() => alert("¡Enlace copiado al portapapeles!"))
       .catch(err => console.error("Error al copiar el enlace: ", err));
   }
 
@@ -60,21 +62,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function shareOnX() {
     const url = window.location.href;
-    window.open(`https://x.com/intent/tweet?url=${encodeURIComponent(url)}`);
+    const message = "Contenido muy interesante, echarle un vistazo: ";
+    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(message)}${encodeURIComponent(url)}`);
   }
 
   function shareOnFacebook() {
     const url = window.location.href;
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`);
+    const message = "Contenido muy interesante, echarle un vistazo: ";
+    const fullMessage = `${message}${url}`;
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(fullMessage)}`);
   }
 
   function shareOnReddit() {
     const url = window.location.href;
-    window.open(`https://www.reddit.com/submit?url=${encodeURIComponent(url)}`);
+    const message = "Contenido muy interesante, echarle un vistazo: ";
+    const fullMessage = `${message}${url}`;
+    window.open(`https://www.reddit.com/submit?url=${encodeURIComponent(fullMessage)}`);
   }
 
-  function shareOnLinkedIn() { // Nueva función para compartir en LinkedIn
+  function shareOnLinkedIn() {
     const url = window.location.href;
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`);
+    const message = "Contenido muy interesante, echarle un vistazo: ";
+    const fullMessage = `${message}${url}`;
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(fullMessage)}`);
   }
 });
