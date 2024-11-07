@@ -82,20 +82,9 @@
         }, []);
     };
 
-    // Aplicación de la configuración de inicialización del módulo de modal con nuevos nombres de atributo
-    const modalAttributes = {
-        element: {
-            key: `pxl-modal-element`,
-            values: { modal: "pxl-modal", open: "pxl-modal-open", close: "pxl-modal-close" }
-        },
-        animation: { key: `pxl-modal-animation` },
-        easing: { key: `pxl-modal-easing` },
-        duration: { key: `pxl-modal-duration` },
-        display: { key: `pxl-modal-display` }
-    };
-
+    // Aplicación de la configuración de inicialización del módulo de modal
     initializeAttributes({
-        scriptAttributes: modalAttributes,
+        scriptAttributes: { /*...definir según sea necesario*/ },
         attributeKey: "modal",
         version: "1.1.3",
         init: async () => {
