@@ -1,5 +1,5 @@
 /**
- * Modal Toggle 1.1
+ * Modal Toggle 1.2
  * Copyright 2024 Pixelker
  * Released under the MIT License
  * Released on: November 7, 2024
@@ -8,96 +8,89 @@
 "use strict";
 
 (() => {
-    // Definir propiedades del módulo y utilidades generales
-    const fsAttributes = "fs-attributes";
-    const alertTypes = ["a11y", "animation", "cmsattribute", "modal", "support"];
-    const alertMessages = async (...modules) => {
-        let results = [];
-        for (let mod of modules) {
-            let loadedModule = await window.fsAttributes[mod]?.loading;
-            results.push(loadedModule);
-        }
-        return results;
-    };
+  const ATTRIBUTE_PREFIX = "fs-attributes";
+  const MODAL = "modal";
+  const SUPPORT = "support";
+  const A11Y = "a11y";
+  const ANIMATION = "animation";
+  const CMS_ATTRIBUTE = "cmsattribute";
 
-    // Definición de clase para activar alertas
-    class Alert {
-        static activateAlerts() { this.alertsActivated = true; }
-        static alert(message, type) {
-            if (this.alertsActivated && window.alert(message)) {
-                if (type === "error") throw new Error(message);
-            }
-        }
-    }
-    Alert.alertsActivated = false;
+  const ALERTS = {
+    activateAlerts() { this.alertsActivated = true; },
+    alert(message, type) {
+      if (this.alertsActivated && window.alert(message), type === "error") throw new Error(message);
+    },
+    alertsActivated: false,
+  };
 
-    // Utilidades para manipulación de eventos y condiciones
-    const noop = () => {};
-    const addEvent = (element, event, handler, options) => {
-        if (!element) return noop;
-        element.addEventListener(event, handler, options);
-        return () => element.removeEventListener(event, handler, options);
-    };
-    const isString = value => typeof value === "string";
-    const isElementVisible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
-    const retrieveModule = (module, version = "1", type = "iife") => 
-        `https://cdn.jsdelivr.net/npm/@finsweet/attributes-${module}@${version}/${module}${type === "esm" ? ".esm" : ""}.js`;
+  const EVENT_UTILS = {
+    attach: (element, event, handler, options) => {
+      if (!element) return () => {};
+      element.addEventListener(event, handler, options);
+      return () => element.removeEventListener(event, handler, options);
+    },
+  };
 
-    // Configuración inicial de importación del módulo de animación
-    const importAnimationModule = async () => {
-        const { fsAttributes } = window;
-        if (!fsAttributes.animation) fsAttributes.animation = {};
-        let animation = fsAttributes.animation;
-        if (animation.import) return animation.import;
-        try {
-            return (animation.import = import(retrieveModule("animation", "1", "esm")));
-        } catch (error) {
-            Alert.alert(`${error}`, "error");
-        }
-    };
+  const UTILS = {
+    isDefined: (value) => value != null,
+    isString: (value) => typeof value === "string",
+    parseIntFromSplit: (value) => {
+      const parts = value.split("-");
+      const num = parseInt(parts[parts.length - 1]);
+      return !isNaN(num) ? num : undefined;
+    },
+    elementIsVisible: (element) => !!(element.offsetWidth || element.offsetHeight || element.getClientRects().length),
+    loadScript: (name, version = "1", format = "iife") => {
+      const file = `${name}${format === "esm" ? ".esm" : ""}.js`;
+      return `https://cdn.jsdelivr.net/npm/@finsweet/attributes-${name}@${version}/${file}`;
+    },
+  };
 
-    // Función para inicializar los atributos
-    const initializeAttributes = ({ scriptAttributes, attributeKey, version, init }) => {
-        const scriptSettings = detectScriptSettings();
-        const moduleData = window.fsAttributes[attributeKey] || (window.fsAttributes[attributeKey] = {});
-        const { preventsLoad, attributes } = parseScriptSettings(scriptAttributes);
-        moduleData.version = version;
-        moduleData.init = init;
-        if (!preventsLoad) {
-            window.Webflow = window.Webflow || [];
-            window.Webflow.push(() => init(attributes));
-        }
-    };
+  // Attributes and configurations
+  const ATTRIBUTES = {
+    preventLoad: { key: `${ATTRIBUTE_PREFIX}-preventload` },
+    debugMode: { key: `${ATTRIBUTE_PREFIX}-debug` },
+    src: { key: "src", values: { finsweet: "@finsweet/attributes" } },
+    dev: { key: `${ATTRIBUTE_PREFIX}-dev` },
+  };
 
-    // Funciones de inicialización y configuración
-    const detectScriptSettings = () => {
-        const customScripts = [
-            selectScriptAttributes("src", "finsweet", { operator: "contains" }),
-            selectScriptAttributes("dev"),
-        ];
-        return [...document.querySelectorAll(`script${customScripts.join(",")}`)].reduce((acc, script) => {
-            let name = script.getAttribute(fsAttributes.dev.key) || (script.src.match(/[\w-. ]+(?=(\.js)$)/) || [])[0];
-            if (name && !acc.includes(name)) acc.push(name);
-            return acc;
-        }, []);
-    };
+  const ANIMATIONS = {
+    element: { key: `${ATTRIBUTE_PREFIX}-${MODAL}-element`, values: { modal: "modal", open: "open", close: "close" } },
+    animation: { key: `${ATTRIBUTE_PREFIX}-animation` },
+    easing: { key: `${ATTRIBUTE_PREFIX}-easing` },
+    duration: { key: `${ATTRIBUTE_PREFIX}-duration` },
+    display: { key: `${ATTRIBUTE_PREFIX}-display` },
+  };
 
-    // Aplicación de la configuración de inicialización del módulo de modal
-    initializeAttributes({
-        scriptAttributes: { /*...definir según sea necesario*/ },
-        attributeKey: "modal",
-        version: "1.1.3",
-        init: async () => {
-            await alertMessages("cmsattribute");
-            const modals = selectElements("modal", { operator: "prefixed", all: true });
-            const animationConfig = await importAnimationModule();
-            if (!animationConfig) return initializeModule("modal", modals);
-            const cleanupHandlers = modals.map(modal => setupModal(modal, animationConfig)).filter(Boolean);
-            const alertModule = async () => {
-                const { import: importAlert } = window.fsAttributes;
-                await importAlert("a11y", "1");
-            };
-            initializeModule("modal", modals, () => cleanupHandlers.forEach(handler => handler()));
-        },
-    });
+  const MODAL_VERSION = "1.1.3";
+
+  const initModal = async () => {
+    await loadCMSModule(CMS_ATTRIBUTE);
+
+    const modals = queryAllByAttribute("modal", { operator: "prefixed", all: true });
+    const animationSettings = await loadAnimationSettings();
+    if (!animationSettings) return destroyModule(MODAL, modals);
+
+    const modalFunctions = modals.map((modal) => configureModal(modal, animationSettings)).filter(UTILS.isDefined);
+    loadA11y();
+
+    return destroyModule(MODAL, modals, () => modalFunctions.forEach((fn) => fn()));
+  };
+
+  const setupModule = ({ version, attributeKey, init, scriptAttributes }) => {
+    loadPreviousScripts();
+    const fsAttributes = setupFsAttributes(scriptAttributes);
+    fsAttributes[attributeKey] = { version, init };
+    documentReady(init);
+  };
+
+  setupModule({
+    init: initModal,
+    version: MODAL_VERSION,
+    attributeKey: MODAL,
+    scriptAttributes: ATTRIBUTES,
+  });
+
+  loadAnimationSettings();
+
 })();
