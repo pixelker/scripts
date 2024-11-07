@@ -1,17 +1,17 @@
 /**
- * Wishlist Toggle 1.0.2
+ * My list Toggle 2.0.1
  * Copyright 2024 Pixelker
  * Released under the MIT License
  * Released on: November 4, 2024
  */
 
 document.addEventListener("DOMContentLoaded", function() {
-    const storedItems = JSON.parse(localStorage.getItem("miListaLectura") || "[]");
+    const storedItems = JSON.parse(localStorage.getItem("myList") || "[]");
 
     function saveItem(itemId) {
         if (!storedItems.includes(itemId)) {
             storedItems.push(itemId);
-            localStorage.setItem("miListaLectura", JSON.stringify(storedItems));
+            localStorage.setItem("myList", JSON.stringify(storedItems));
         }
         renderSavedList();
     }
@@ -20,11 +20,11 @@ document.addEventListener("DOMContentLoaded", function() {
         const index = storedItems.indexOf(itemId);
         if (index !== -1) {
             storedItems.splice(index, 1);
-            localStorage.setItem("miListaLectura", JSON.stringify(storedItems));
+            localStorage.setItem("myList", JSON.stringify(storedItems));
         }
 
         // Actualiza el botón en la página de la colección inmediatamente
-        const itemInCollection = document.querySelector(`[pxl-item-id="${itemId}"]`);
+        const itemInCollection = document.querySelector(`[pxl-mylist-item="${itemId}"]`);
         if (itemInCollection) {
             updateButtonVisibility(itemInCollection);
         }
@@ -33,9 +33,9 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function updateButtonVisibility(itemElement) {
-        const itemId = itemElement.getAttribute("pxl-item-id");
-        const addButton = itemElement.querySelector('[pxl-action="guardar"]');
-        const removeButton = itemElement.querySelector('[pxl-action="eliminar"]');
+        const itemId = itemElement.getAttribute("pxl-mylist-item");
+        const addButton = itemElement.querySelector('[pxl-mylist-trigger="save"]');
+        const removeButton = itemElement.querySelector('[pxl-mylist-trigger="remove"]');
 
         if (storedItems.includes(itemId)) {
             if (addButton) addButton.style.display = "none";
@@ -47,46 +47,46 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     function initializeItems() {
-        document.querySelectorAll('[pxl-collection="articulos"] [pxl-item-id]').forEach(item => {
+        document.querySelectorAll('[pxl-mylist-element="list"] [pxl-mylist-item]').forEach(item => {
             updateButtonVisibility(item);
 
-            item.querySelector('[pxl-action="guardar"]').addEventListener("click", function() {
-                saveItem(item.getAttribute("pxl-item-id"));
+            item.querySelector('[pxl-mylist-trigger="save"]').addEventListener("click", function() {
+                saveItem(item.getAttribute("pxl-mylist-item"));
                 updateButtonVisibility(item);
             });
 
-            item.querySelector('[pxl-action="eliminar"]').addEventListener("click", function() {
-                removeItem(item.getAttribute("pxl-item-id"));
+            item.querySelector('[pxl-mylist-trigger="remove"]').addEventListener("click", function() {
+                removeItem(item.getAttribute("pxl-mylist-item"));
                 updateButtonVisibility(item);
             });
         });
     }
 
     function initializeSavedItem(itemElement) {
-        const addButton = itemElement.querySelector('[pxl-action="guardar"]');
-        const removeButton = itemElement.querySelector('[pxl-action="eliminar"]');
+        const addButton = itemElement.querySelector('[pxl-mylist-trigger="save"]');
+        const removeButton = itemElement.querySelector('[pxl-mylist-trigger="remove"]');
 
         if (addButton) {
             addButton.addEventListener("click", function() {
-                saveItem(itemElement.getAttribute("pxl-item-id"));
+                saveItem(itemElement.getAttribute("pxl-mylist-item"));
                 updateButtonVisibility(itemElement);
             });
         }
 
         if (removeButton) {
             removeButton.addEventListener("click", function() {
-                removeItem(itemElement.getAttribute("pxl-item-id"));
+                removeItem(itemElement.getAttribute("pxl-mylist-item"));
                 updateButtonVisibility(itemElement);
             });
         }
     }
 
     function renderSavedList() {
-        const savedContainer = document.querySelector('[pxl-saved-list="articulos"]');
+        const savedContainer = document.querySelector('[pxl-mylist-saved="list"]');
         if (savedContainer) {
             savedContainer.innerHTML = "";
             storedItems.forEach(itemId => {
-                const itemElement = document.querySelector(`[pxl-item-id="${itemId}"]`);
+                const itemElement = document.querySelector(`[pxl-mylist-item="${itemId}"]`);
                 if (itemElement) {
                     const clone = itemElement.cloneNode(true);
                     updateButtonVisibility(clone);
@@ -104,22 +104,22 @@ document.addEventListener("DOMContentLoaded", function() {
     renderSavedList();
 
     // Manejar botones en la página del artículo individual
-    const singleArticle = document.querySelector('[pxl-item-id]');
+    const singleArticle = document.querySelector('[pxl-mylist-item]');
     if (singleArticle) {
         updateButtonVisibility(singleArticle);
-        const addButton = singleArticle.querySelector('[pxl-action="guardar"]');
-        const removeButton = singleArticle.querySelector('[pxl-action="eliminar"]');
+        const addButton = singleArticle.querySelector('[pxl-mylist-trigger="save"]');
+        const removeButton = singleArticle.querySelector('[pxl-mylist-trigger="remove"]');
 
         if (addButton) {
             addButton.addEventListener("click", function() {
-                saveItem(singleArticle.getAttribute("pxl-item-id"));
+                saveItem(singleArticle.getAttribute("pxl-mylist-item"));
                 updateButtonVisibility(singleArticle);
             });
         }
 
         if (removeButton) {
             removeButton.addEventListener("click", function() {
-                removeItem(singleArticle.getAttribute("pxl-item-id"));
+                removeItem(singleArticle.getAttribute("pxl-mylist-item"));
                 updateButtonVisibility(singleArticle);
             });
         }
