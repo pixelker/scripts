@@ -1,5 +1,5 @@
 /**
- * My list Toggle 2.0.1
+ * My list Toggle 2.1
  * Copyright 2024 Pixelker
  * Released under the MIT License
  * Released on: November 4, 2024
