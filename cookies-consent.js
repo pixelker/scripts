@@ -4,6 +4,7 @@
  * Released under the MIT License
  * Released on: August 15, 2025
  */
+
 (function() {
     'use strict';
     
