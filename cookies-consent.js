@@ -5,12 +5,19 @@
  * Released on: August 15, 2025
  */
 
+/*!
+ * Universal Cookie Consent System - Fixed Version
+ * Pixelker - Sistema de consentimiento de cookies universal
+ * Compatible con Google Consent Mode v2, RGPD compliant
+ * Versión: 1.1.0 - Corregido conflictos y switchers
+ */
+
 (function() {
   'use strict';
 
   class UniversalCookieConsent {
     constructor() {
-      this.version = '1.0.0';
+      this.version = '1.1.0';
       this.config = {
         // Detectar endpoint desde atributo del script
         endpoint: this.detectEndpoint(),
@@ -48,6 +55,9 @@
       this.domain = window.location.hostname;
       this.isOnline = !!this.config.endpoint;
       
+      // Evitar conflictos con otros scripts usando namespace único
+      this.namespace = 'pxlCookieConsent_' + Date.now();
+      
       console.log(`🍪 Universal Cookie Consent v${this.version} iniciado`);
       console.log(`🍪 Dominio: ${this.domain}`);
       console.log(`🍪 Endpoint: ${this.config.endpoint || 'Modo offline'}`);
@@ -62,6 +72,10 @@
       for (let script of scripts) {
         const endpoint = script.getAttribute('pxl-consent-endpoint');
         if (endpoint) {
+          // Asegurar que el endpoint tiene la ruta correcta
+          if (!endpoint.includes('/api/consent')) {
+            return endpoint + '/api/consent';
+          }
           return endpoint;
         }
       }
@@ -91,7 +105,7 @@
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
       } else {
-        this.setupEventListeners();
+        setTimeout(() => this.setupEventListeners(), 100);
       }
     }
     
@@ -144,6 +158,9 @@
       
       // Ejecutar callbacks personalizados si existen
       this.executeCustomCallbacks();
+      
+      // Actualizar visualmente los switchers
+      this.updateCheckboxStates();
       
       // Disparar evento personalizado
       this.dispatchConsentEvent();
@@ -230,15 +247,30 @@
       // Checkboxes
       this.setupCheckboxListeners();
       
+      // Actualizar estado inicial de checkboxes
+      setTimeout(() => this.updateCheckboxStates(), 200);
+      
       console.log('🍪 Event listeners configurados');
     }
     
     addClickListener(selector, callback) {
-      document.querySelectorAll(selector).forEach(element => {
-        element.addEventListener('click', (e) => {
+      const elements = document.querySelectorAll(selector);
+      if (elements.length === 0) {
+        console.warn(`🍪 No se encontraron elementos con selector: ${selector}`);
+        return;
+      }
+      
+      elements.forEach(element => {
+        // Remover listeners previos para evitar duplicados
+        element.removeEventListener('click', this.handleClick);
+        
+        const boundCallback = (e) => {
           e.preventDefault();
+          e.stopPropagation();
           callback();
-        });
+        };
+        
+        element.addEventListener('click', boundCallback);
       });
     }
     
@@ -331,7 +363,10 @@
       const preferences = document.querySelector(this.config.selectors.preferences);
       if (preferences) {
         preferences.style.display = 'block';
-        preferences.classList.add('show');
+        
+        // Evitar conflictos con otros scripts añadiendo clase específica
+        preferences.classList.add('pxl-cookies-modal-active');
+        
         this.disableScroll();
         this.updateCheckboxStates();
         console.log('🍪 Panel de preferencias abierto');
@@ -342,7 +377,7 @@
       const preferences = document.querySelector(this.config.selectors.preferences);
       if (preferences) {
         preferences.style.display = 'none';
-        preferences.classList.remove('show');
+        preferences.classList.remove('pxl-cookies-modal-active');
         this.enableScroll();
         console.log('🍪 Panel de preferencias cerrado');
       }
@@ -352,7 +387,7 @@
       const banner = document.querySelector(this.config.selectors.banner);
       if (banner) {
         banner.style.display = 'block';
-        banner.classList.add('show');
+        banner.classList.add('pxl-cookies-banner-active');
         console.log('🍪 Banner mostrado');
       }
     }
@@ -361,7 +396,7 @@
       const banner = document.querySelector(this.config.selectors.banner);
       if (banner) {
         banner.style.display = 'none';
-        banner.classList.remove('show');
+        banner.classList.remove('pxl-cookies-banner-active');
         console.log('🍪 Banner ocultado');
       }
     }
@@ -369,21 +404,36 @@
     updateCheckboxStates() {
       const { selectors } = this.config;
       
+      // Actualizar estados visuales de checkboxes según consentimiento actual
       const analyticsCheckbox = document.querySelector(selectors.checkboxAnalytics);
       const marketingCheckbox = document.querySelector(selectors.checkboxMarketing);
       const functionalCheckbox = document.querySelector(selectors.checkboxFunctional);
       
       if (analyticsCheckbox) {
-        analyticsCheckbox.classList.toggle('w--redirected-checked', this.consent.analytics);
-      }
-      if (marketingCheckbox) {
-        marketingCheckbox.classList.toggle('w--redirected-checked', this.consent.marketing);
-      }
-      if (functionalCheckbox) {
-        functionalCheckbox.classList.toggle('w--redirected-checked', this.consent.functional);
+        if (this.consent.analytics) {
+          analyticsCheckbox.classList.add('w--redirected-checked');
+        } else {
+          analyticsCheckbox.classList.remove('w--redirected-checked');
+        }
       }
       
-      console.log('🍪 Estados de checkboxes actualizados');
+      if (marketingCheckbox) {
+        if (this.consent.marketing) {
+          marketingCheckbox.classList.add('w--redirected-checked');
+        } else {
+          marketingCheckbox.classList.remove('w--redirected-checked');
+        }
+      }
+      
+      if (functionalCheckbox) {
+        if (this.consent.functional) {
+          functionalCheckbox.classList.add('w--redirected-checked');
+        } else {
+          functionalCheckbox.classList.remove('w--redirected-checked');
+        }
+      }
+      
+      console.log('🍪 Estados de checkboxes actualizados:', this.consent);
     }
     
     // ===== GESTIÓN DE ALMACENAMIENTO LOCAL =====
@@ -463,18 +513,23 @@
       };
       
       try {
+        console.log('🍪 Enviando al endpoint:', this.config.endpoint);
+        console.log('🍪 Payload:', payload);
+        
         const response = await fetch(this.config.endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          mode: 'cors'
         });
         
         if (response.ok) {
-          console.log('🍪 Datos enviados al endpoint correctamente');
+          const result = await response.json();
+          console.log('🍪 Datos enviados al endpoint correctamente:', result);
         } else {
-          console.warn('🍪 Error enviando al endpoint:', response.status);
+          console.warn('🍪 Error enviando al endpoint:', response.status, response.statusText);
         }
       } catch (error) {
         console.warn('🍪 Endpoint no disponible, funcionando en modo offline:', error.message);
@@ -528,7 +583,7 @@
   
   // ===== INICIALIZACIÓN GLOBAL =====
   
-  // Crear instancia global
+  // Crear instancia global con namespace único para evitar conflictos
   window.PxlCookieConsent = new UniversalCookieConsent();
   
   // ===== FUNCIONES GLOBALES DE CONVENIENCIA =====
@@ -558,6 +613,6 @@
     console.log('🍪 Consentimiento actualizado:', event.detail);
   });
   
-  console.log('🍪 Universal Cookie Consent System cargado correctamente');
+  console.log('🍪 Universal Cookie Consent System v1.1.0 cargado correctamente');
   
 })();
