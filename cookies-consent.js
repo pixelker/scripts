@@ -1,16 +1,15 @@
 /**
- * Universal Cookie Consent System 2.9
+ * Universal Cookie Consent System 3.0
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 15, 2025
  */
-
 (function() {
     'use strict';
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '2.9';
+            this.version = '3.0';
             this.config = {
                 // Endpoint dinámico basado en el dominio actual
                 endpoint: this.buildEndpoint(),
@@ -94,13 +93,13 @@
             }
             
             // Configurar event listeners cuando DOM esté listo
-            // Esperar más tiempo para que Webflow inicialice sus componentes
+            // Delay mayor para asegurar que Webflow haya inicializado
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
-                    setTimeout(() => this.setupEventListeners(), 500);
+                    setTimeout(() => this.setupEventListeners(), 800);
                 });
             } else {
-                setTimeout(() => this.setupEventListeners(), 500);
+                setTimeout(() => this.setupEventListeners(), 800);
             }
         }
         
@@ -213,6 +212,8 @@
         setupEventListeners() {
             const { selectors } = this.config;
             
+            console.log('🍪 Configurando event listeners...');
+            
             // Primero actualizar los checkboxes con el estado guardado
             this.updateCheckboxStates();
             
@@ -248,7 +249,10 @@
             this.setupCheckboxListeners();
             
             // Actualizar estado de checkboxes nuevamente después de configurar listeners
-            setTimeout(() => this.updateCheckboxStates(), 100);
+            setTimeout(() => {
+                console.log('🍪 Actualizando checkboxes después de configurar listeners...');
+                this.updateCheckboxStates();
+            }, 500);
             
             console.log('🍪 Event listeners configurados');
         }
@@ -771,7 +775,7 @@
             console.log('🍪 Consentimiento actualizado:', event.detail);
         });
         
-        console.log('🍪 Universal Cookie Consent System v2.9 cargado correctamente');
+        console.log('🍪 Universal Cookie Consent System v2.10 cargado correctamente');
     }
     
     // Inicializar cuando el DOM esté listo y Webflow haya cargado
