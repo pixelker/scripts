@@ -1,16 +1,15 @@
 /**
- * Universal Cookie Consent System 2.8
+ * Universal Cookie Consent System 3.0
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 15, 2025
  */
-
 (function() {
     'use strict';
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '2.8';
+            this.version = '3.0';
             this.config = {
                 // Endpoint dinámico basado en el dominio actual
                 endpoint: this.buildEndpoint(),
@@ -94,10 +93,13 @@
             }
             
             // Configurar event listeners cuando DOM esté listo
+            // Esperar más tiempo para que Webflow inicialice sus componentes
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => this.setupEventListeners());
+                document.addEventListener('DOMContentLoaded', () => {
+                    setTimeout(() => this.setupEventListeners(), 500);
+                });
             } else {
-                setTimeout(() => this.setupEventListeners(), 100);
+                setTimeout(() => this.setupEventListeners(), 500);
             }
         }
         
@@ -151,14 +153,20 @@
             // Ejecutar callbacks personalizados si existen
             this.executeCustomCallbacks();
             
-            // Actualizar visualmente los checkboxes
-            this.updateCheckboxStates();
+            // Actualizar visualmente los checkboxes (con delay para asegurar DOM listo)
+            setTimeout(() => {
+                this.updateCheckboxStates();
+            }, 100);
             
             // Disparar evento personalizado
             this.dispatchConsentEvent();
             
-            // Enviar al endpoint
-            this.sendToEndpoint('consent_updated', this.consent);
+            // Enviar al endpoint (solo una vez, no duplicar)
+            if (!this.consentSent) {
+                this.sendToEndpoint('consent_updated', this.consent);
+                this.consentSent = true;
+                setTimeout(() => { this.consentSent = false; }, 1000);
+            }
         }
         
         executeCustomCallbacks() {
@@ -204,6 +212,9 @@
         setupEventListeners() {
             const { selectors } = this.config;
             
+            // Primero actualizar los checkboxes con el estado guardado
+            this.updateCheckboxStates();
+            
             // Botón aceptar todas
             this.addClickListener(selectors.acceptAllBtn, () => {
                 this.acceptAll();
@@ -235,8 +246,8 @@
             // Checkboxes
             this.setupCheckboxListeners();
             
-            // Actualizar estado inicial de checkboxes
-            setTimeout(() => this.updateCheckboxStates(), 200);
+            // Actualizar estado de checkboxes nuevamente después de configurar listeners
+            setTimeout(() => this.updateCheckboxStates(), 100);
             
             console.log('🍪 Event listeners configurados');
         }
@@ -280,12 +291,18 @@
             const customCheckbox = wrapper.querySelector('.w-checkbox-input');
             
             if (input) {
-                // Remover listeners previos
-                const newInput = input.cloneNode(true);
-                input.parentNode.replaceChild(newInput, input);
+                // Establecer el estado inicial desde el consentimiento guardado
+                input.checked = this.consent[category];
+                if (customCheckbox) {
+                    if (this.consent[category]) {
+                        customCheckbox.classList.add('w--redirected-checked');
+                    } else {
+                        customCheckbox.classList.remove('w--redirected-checked');
+                    }
+                }
                 
-                // Añadir nuevo listener al input
-                newInput.addEventListener('change', (e) => {
+                // Añadir listener al input
+                input.addEventListener('change', (e) => {
                     this.consent[category] = e.target.checked;
                     
                     // Actualizar visual del custom checkbox
@@ -299,19 +316,17 @@
                     
                     console.log(`🍪 Checkbox ${category} cambiado:`, e.target.checked);
                 });
-            }
-            
-            // También añadir listener al wrapper para clicks en el label
-            wrapper.addEventListener('click', (e) => {
-                // Solo procesar si no es el input mismo
-                if (e.target.tagName !== 'INPUT') {
-                    e.preventDefault();
-                    if (input) {
+                
+                // Añadir listener al custom checkbox para clicks
+                if (customCheckbox) {
+                    customCheckbox.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         input.checked = !input.checked;
                         input.dispatchEvent(new Event('change'));
-                    }
+                    });
                 }
-            });
+            }
         }
         
         // ===== ACCIONES DEL USUARIO =====
@@ -377,19 +392,19 @@
         openPreferences() {
             const preferences = document.querySelector(this.config.selectors.preferences);
             if (preferences) {
-                // Guardar estado actual del dark mode
-                this.darkModeState = document.documentElement.classList.contains('dark-mode');
+                // Guardar las clases originales para evitar conflictos con dark mode
+                this.originalBodyClasses = document.body.className;
+                this.originalHtmlClasses = document.documentElement.className;
                 
                 preferences.style.display = 'block';
                 preferences.classList.add('pxl-cookies-modal-active');
                 
-                // Añadir clase para prevenir cambios de dark mode
-                document.documentElement.classList.add('pxl-cookies-preferences-open');
-                
                 this.disableScroll();
                 
                 // Forzar actualización de checkboxes después de mostrar
-                setTimeout(() => this.updateCheckboxStates(), 50);
+                setTimeout(() => {
+                    this.updateCheckboxStates();
+                }, 100);
                 
                 console.log('🍪 Panel de preferencias abierto');
             }
@@ -401,8 +416,13 @@
                 preferences.style.display = 'none';
                 preferences.classList.remove('pxl-cookies-modal-active');
                 
-                // Remover clase de prevención
-                document.documentElement.classList.remove('pxl-cookies-preferences-open');
+                // Restaurar clases originales si fueron guardadas
+                if (this.originalBodyClasses !== undefined) {
+                    document.body.className = this.originalBodyClasses;
+                }
+                if (this.originalHtmlClasses !== undefined) {
+                    document.documentElement.className = this.originalHtmlClasses;
+                }
                 
                 this.enableScroll();
                 console.log('🍪 Panel de preferencias cerrado');
@@ -440,22 +460,32 @@
         
         updateWebflowCheckbox(selector, isChecked) {
             const wrapper = document.querySelector(selector);
-            if (!wrapper) return;
+            if (!wrapper) {
+                console.warn(`🍪 No se encontró el wrapper para: ${selector}`);
+                return;
+            }
             
             const input = wrapper.querySelector('input[type="checkbox"]');
             const customCheckbox = wrapper.querySelector('.w-checkbox-input');
             
             if (input) {
                 input.checked = isChecked;
+                // Disparar evento change para que Webflow lo detecte
+                input.dispatchEvent(new Event('change', { bubbles: true }));
             }
             
             if (customCheckbox) {
+                // Forzar actualización visual
                 if (isChecked) {
                     customCheckbox.classList.add('w--redirected-checked');
+                    customCheckbox.dataset.wRedirected = 'true';
                 } else {
                     customCheckbox.classList.remove('w--redirected-checked');
+                    customCheckbox.dataset.wRedirected = 'false';
                 }
             }
+            
+            console.log(`🍪 Checkbox ${selector} actualizado a: ${isChecked}`);
         }
         
         // ===== GESTIÓN DE ALMACENAMIENTO LOCAL =====
