@@ -1,15 +1,8 @@
 /**
- * Universal Cookie Consent System 1.0
+ * Universal Cookie Consent System 1.1
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 15, 2025
- */
-
-/*!
- * Universal Cookie Consent System - Fixed Version
- * Pixelker - Sistema de consentimiento de cookies universal
- * Compatible con Google Consent Mode v2, RGPD compliant
- * Versión: 1.1.0 - Corregido conflictos y switchers
  */
 
 (function() {
