@@ -1,5 +1,5 @@
 /**
- * Universal Cookie Consent System 2.7
+ * Universal Cookie Consent System 2.8
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 15, 2025
@@ -10,7 +10,7 @@
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '2.7.0';
+            this.version = '2.8';
             this.config = {
                 // Endpoint dinámico basado en el dominio actual
                 endpoint: this.buildEndpoint(),
@@ -22,12 +22,12 @@
                     form: '[pxl-cookies-consent="form"]',
                     acceptAllBtn: '[pxl-cookies-consent="allow"]',
                     rejectAllBtn: '[pxl-cookies-consent="deny"]',
-                    openPreferencesBtn: '[pxl-cookies-consent="openpreferences"]',
-                    savePreferencesBtn: '[pxl-cookies-consent="savepreferences"]',
+                    openPreferencesBtn: '[pxl-cookies-consent="open-preferences"]',
+                    savePreferencesBtn: '[pxl-cookies-consent="save-preferences"]',
                     closeBtn: '[pxl-cookies-consent="close"]',
-                    checkboxAnalytics: '[pxl-cookies-consent="checkboxanalytics"]',
-                    checkboxMarketing: '[pxl-cookies-consent="checkboxmarketing"]',
-                    checkboxFunctional: '[pxl-cookies-consent="checkboxfunctional"]',
+                    checkboxAnalytics: '[pxl-cookies-consent="checkbox-analytics"]',
+                    checkboxMarketing: '[pxl-cookies-consent="checkbox-marketing"]',
+                    checkboxFunctional: '[pxl-cookies-consent="checkbox-functional"]',
                     formContainer: '#cookies-consent'
                 },
                 
