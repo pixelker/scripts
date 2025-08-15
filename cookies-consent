@@ -1,3 +1,17 @@
+/**
+ * Dark Mode Toggle 1.2
+ * Copyright 2024 Pixelker
+ * Released under the MIT License
+ * Released on: Setember 25, 2024
+ */
+
+/*!
+ * Universal Cookie Consent System
+ * Pixelker - Sistema de consentimiento de cookies universal
+ * Compatible con Google Consent Mode v2, RGPD compliant
+ * Versión: 1.0.0
+ */
+
 (function() {
   'use strict';
 
