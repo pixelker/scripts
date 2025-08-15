@@ -65,12 +65,16 @@
       for (let script of scripts) {
         const endpoint = script.getAttribute('pxl-consent-endpoint');
         if (endpoint) {
+          // Asegurar que tiene protocolo
+          if (!endpoint.startsWith('http')) {
+            return 'https://' + endpoint.replace(/^\/+/, '');
+          }
           return endpoint;
         }
       }
       
-      // Fallback al endpoint por defecto si no se especifica
-      return 'https://www.farmaciaesplugas.com/kv/cookies';
+      // Si no se especifica endpoint, no funciona
+      return null;
     }
     
     // ===== INICIALIZACIÓN =====
