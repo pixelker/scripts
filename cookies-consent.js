@@ -94,13 +94,13 @@
             }
             
             // Configurar event listeners cuando DOM esté listo
-            // Delay mayor para asegurar que Webflow haya inicializado
+            // Delay para asegurar que los elementos estén listos
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
-                    setTimeout(() => this.setupEventListeners(), 800);
+                    setTimeout(() => this.setupEventListeners(), 1000);
                 });
             } else {
-                setTimeout(() => this.setupEventListeners(), 800);
+                setTimeout(() => this.setupEventListeners(), 1000);
             }
         }
         
@@ -738,9 +738,14 @@
     
     // ===== INICIALIZACIÓN GLOBAL =====
     
-    // Esperar a que el DOM esté listo para evitar conflictos
+    // Crear instancia global
     function initCookieConsent() {
-        // Crear instancia global
+        // Verificar si ya existe
+        if (window.PxlCookieConsent) {
+            console.log('⚠️ Cookie consent ya inicializado');
+            return;
+        }
+        
         window.PxlCookieConsent = new UniversalCookieConsent();
         
         // ===== FUNCIONES GLOBALES DE CONVENIENCIA =====
@@ -776,30 +781,18 @@
             console.log('🍪 Consentimiento actualizado:', event.detail);
         });
         
-        console.log('🍪 Universal Cookie Consent System v2.10 cargado correctamente');
+        console.log('🍪 Universal Cookie Consent System v3.0 cargado correctamente');
     }
     
-    // Inicializar cuando el DOM esté listo y Webflow haya cargado
-    function waitForWebflow() {
-        // Esperar a que Webflow esté listo
-        if (window.Webflow && window.Webflow.ready) {
-            window.Webflow.ready(function() {
-                console.log('🍪 Webflow está listo, inicializando cookies consent...');
-                initCookieConsent();
-            });
-        } else if (document.readyState === 'complete') {
-            // Si Webflow no está disponible pero el DOM está completo
-            setTimeout(initCookieConsent, 1000);
-        } else {
-            // Esperar un poco más
-            setTimeout(waitForWebflow, 100);
-        }
-    }
-    
+    // Inicialización simplificada - NO esperar a Webflow indefinidamente
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', waitForWebflow);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Pequeño delay para dar tiempo a otros scripts
+            setTimeout(initCookieConsent, 500);
+        });
     } else {
-        waitForWebflow();
+        // DOM ya está listo, inicializar con pequeño delay
+        setTimeout(initCookieConsent, 500);
     }
     
 })();
