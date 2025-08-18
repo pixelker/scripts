@@ -1,5 +1,5 @@
 /**
- * Universal Cookie Consent System 4.0
+ * Universal Cookie Consent System 4.1
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 18, 2025
@@ -10,7 +10,7 @@
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '4.0';
+            this.version = '4.1';
             this.config = {
                 // Endpoint dinámico con fallback inteligente
                 endpoint: this.buildEndpoint(),
@@ -151,9 +151,8 @@
                 const savedConsent = this.getSavedConsent();
                 if (savedConsent) {
                     this.consent = savedConsent;
-                    this.applyConsent();
-                    this.hideBanner();
                     this.log('🍪 Consentimiento existente encontrado:', this.consent);
+                    this.hideBanner();
                 } else {
                     // Primera visita o consentimiento expirado
                     this.showBanner();
@@ -162,7 +161,16 @@
                 
                 // Configurar event listeners cuando DOM esté listo
                 await this.waitForDOM();
+                
+                // Esperar un poco más para que Webflow termine de renderizar
+                await this.waitForWebflow();
+                
                 this.setupEventListeners();
+                
+                // Aplicar consentimiento DESPUÉS de setupEventListeners
+                if (savedConsent) {
+                    this.applyConsent();
+                }
                 
                 const initTime = performance.now() - initStartTime;
                 this.log(`✅ Inicialización completa en ${initTime.toFixed(2)}ms`);
@@ -189,6 +197,28 @@
                 } else {
                     // DOM ya está listo, pequeño delay para otros scripts
                     setTimeout(resolve, 100);
+                }
+            });
+        }
+        
+        async waitForWebflow() {
+            return new Promise((resolve) => {
+                // Esperar a que Webflow termine de inicializar
+                if (window.Webflow) {
+                    // Si Webflow ya está cargado, esperar un poco más para el rendering
+                    setTimeout(resolve, 300);
+                } else {
+                    // Esperar a que Webflow se cargue
+                    let attempts = 0;
+                    const checkWebflow = () => {
+                        attempts++;
+                        if (window.Webflow || attempts > 10) {
+                            setTimeout(resolve, 300);
+                        } else {
+                            setTimeout(checkWebflow, 100);
+                        }
+                    };
+                    checkWebflow();
                 }
             });
         }
@@ -335,19 +365,26 @@
                 { selector: selectors.checkboxFunctional, category: 'functional' }
             ];
             
+            this.log('🍪 Iniciando detección de switchers...');
+            
             categories.forEach(({ selector, category }) => {
+                this.log(`🍪 Buscando elemento con selector: ${selector}`);
                 const element = document.querySelector(selector);
                 if (!element) {
-                    this.log(`🍪 No se encontró elemento para ${category}`, 'warn');
+                    this.log(`🍪 ❌ No se encontró elemento para ${category} con selector ${selector}`, 'warn');
                     return;
                 }
+                
+                this.log(`🍪 ✅ Elemento encontrado para ${category}:`, element);
                 
                 // Detectar estructura de Webflow
                 const switcherInfo = this.analyzeWebflowStructure(element, category);
                 this.webflowSwitchers.set(category, switcherInfo);
                 
-                this.log(`🍪 Switcher ${category} detectado:`, switcherInfo);
+                this.log(`🍪 Switcher ${category} configurado:`, switcherInfo);
             });
+            
+            this.log(`🍪 Detección completada. Switchers encontrados: ${this.webflowSwitchers.size}`);
         }
         
         analyzeWebflowStructure(element, category) {
@@ -512,18 +549,29 @@
         
         updateWebflowElements() {
             this.log('🍪 Actualizando elementos Webflow con estado:', this.consent);
+            this.log(`🍪 Switchers disponibles: ${Array.from(this.webflowSwitchers.keys()).join(', ')}`);
             
             // Usar requestAnimationFrame para mejor performance
             requestAnimationFrame(() => {
+                let updated = 0;
                 for (const [category, switcherInfo] of this.webflowSwitchers.entries()) {
                     if (switcherInfo.isValid) {
+                        this.log(`🍪 Actualizando ${category} a estado: ${this.consent[category]}`);
                         this.updateWebflowSwitcherVisual(switcherInfo, this.consent[category]);
-                        this.log(`🍪 Elemento ${category} actualizado a: ${this.consent[category]}`);
+                        this.log(`🍪 ✅ Elemento ${category} actualizado a: ${this.consent[category]}`);
+                        updated++;
+                    } else {
+                        this.log(`🍪 ❌ Switcher ${category} no es válido`, 'warn');
                     }
                 }
                 
+                this.log(`🍪 Actualizados ${updated} elementos de ${this.webflowSwitchers.size} disponibles`);
+                
                 // Forzar re-render después de todas las actualizaciones
-                setTimeout(() => this.forceWebflowRerender(), 50);
+                setTimeout(() => {
+                    this.forceWebflowRerender();
+                    this.log('🍪 Re-render de Webflow completado');
+                }, 50);
             });
         }
         
@@ -673,19 +721,35 @@
         openPreferences() {
             const preferences = document.querySelector(this.config.selectors.preferences);
             if (preferences) {
-                // Guardar estado original para restaurar después
-                this.originalBodyClasses = document.body.className;
-                this.originalHtmlClasses = document.documentElement.className;
+                this.log('🍪 Abriendo panel de preferencias...');
                 
+                // Guardar estado original COMPLETO para restaurar después
+                this.originalBodyState = {
+                    className: document.body.className,
+                    style: {
+                        overflow: document.body.style.overflow,
+                        position: document.body.style.position,
+                        top: document.body.style.top,
+                        width: document.body.style.width,
+                        height: document.body.style.height
+                    }
+                };
+                this.originalHtmlState = {
+                    className: document.documentElement.className
+                };
+                
+                // Mostrar modal
                 preferences.style.display = 'block';
                 preferences.classList.add('pxl-cookies-modal-active');
                 
-                this.disableScroll();
+                // Aplicar scroll lock SIN modificar clases de color
+                this.disableScrollPreserveStyles();
                 
-                // Actualizar switchers después de mostrar
+                // Actualizar switchers después de mostrar con delay adicional
                 setTimeout(() => {
                     this.updateWebflowElements();
-                }, 100);
+                    this.log('🍪 Elementos actualizados después de abrir preferencias');
+                }, 150);
                 
                 this.log('🍪 Panel de preferencias abierto');
             }
@@ -694,20 +758,59 @@
         closePreferences() {
             const preferences = document.querySelector(this.config.selectors.preferences);
             if (preferences) {
+                this.log('🍪 Cerrando panel de preferencias...');
+                
                 preferences.style.display = 'none';
                 preferences.classList.remove('pxl-cookies-modal-active');
                 
-                // Restaurar clases originales
-                if (this.originalBodyClasses !== undefined) {
-                    document.body.className = this.originalBodyClasses;
-                }
-                if (this.originalHtmlClasses !== undefined) {
-                    document.documentElement.className = this.originalHtmlClasses;
-                }
+                // Restaurar estado COMPLETO del body y html
+                this.restoreOriginalStyles();
                 
-                this.enableScroll();
                 this.log('🍪 Panel de preferencias cerrado');
             }
+        }
+        
+        // ===== CONTROL DE SCROLL MEJORADO SIN AFECTAR COLORES =====
+        
+        disableScrollPreserveStyles() {
+            this.scrollPosition = window.pageYOffset;
+            
+            // Solo modificar propiedades de posición, NO clases de color
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.top = `-${this.scrollPosition}px`;
+            document.body.style.width = '100%';
+            document.body.style.height = '100%';
+            
+            // NO tocar className para preservar colores/temas
+            this.log('🍪 Scroll deshabilitado preservando estilos');
+        }
+        
+        restoreOriginalStyles() {
+            // Restaurar clases originales EXACTAS
+            if (this.originalBodyState) {
+                document.body.className = this.originalBodyState.className;
+                
+                // Restaurar estilos originales
+                Object.keys(this.originalBodyState.style).forEach(prop => {
+                    if (this.originalBodyState.style[prop]) {
+                        document.body.style[prop] = this.originalBodyState.style[prop];
+                    } else {
+                        document.body.style.removeProperty(prop);
+                    }
+                });
+            }
+            
+            if (this.originalHtmlState) {
+                document.documentElement.className = this.originalHtmlState.className;
+            }
+            
+            // Restaurar posición de scroll
+            if (this.scrollPosition !== undefined) {
+                window.scrollTo(0, this.scrollPosition);
+            }
+            
+            this.log('🍪 Estilos originales restaurados completamente');
         }
         
         showBanner() {
@@ -964,7 +1067,7 @@
         window.getCookieConsentStatus = () => window.PxlCookieConsent?.getStatus() || null;
         window.forceUpdateCookieCheckboxes = () => window.PxlCookieConsent?.forceUpdateWebflowElements();
         
-        console.log('🍪 Universal Cookie Consent System v4.0 Enterprise cargado correctamente');
+        console.log('🍪 Universal Cookie Consent System v4.1 Enterprise cargado correctamente');
     }
     
     // Inicialización inmediata si DOM está listo, sino esperar
