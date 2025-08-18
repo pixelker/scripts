@@ -64,7 +64,11 @@
         }
         
         log(message, type = 'info') {
-            console[type](`${message}`);
+            if (typeof console[type] === 'function') {
+                console[type](message);
+            } else {
+                console.log(message);
+            }
         }
         
         // ===== CONSTRUCCIÓN DINÁMICA DEL ENDPOINT =====
@@ -101,7 +105,7 @@
                 this.consent = savedConsent;
                 this.applyConsent();
                 this.hideBanner();
-                this.log('🍪 Consentimiento existente encontrado:', this.consent);
+                this.log('🍪 Consentimiento existente encontrado: ' + JSON.stringify(this.consent));
             } else {
                 // Primera visita o consentimiento expirado
                 this.showBanner();
@@ -154,13 +158,13 @@
                 'functionality_storage': this.consent.functional ? 'granted' : 'denied'
             });
             
-            this.log('🍪 Consent Mode actualizado:', this.consent);
+            this.log('🍪 Consent Mode actualizado: ' + JSON.stringify(this.consent));
         }
         
         // ===== APLICACIÓN DE CONSENTIMIENTO =====
         
         applyConsent() {
-            this.log('🍪 Aplicando consentimiento:', this.consent);
+            this.log('🍪 Aplicando consentimiento: ' + JSON.stringify(this.consent));
             
             // Actualizar Consent Mode
             this.updateConsentMode();
@@ -459,7 +463,7 @@
             this.hideBanner();
             
             this.sendToEndpoint('custom_config', this.consent);
-            this.log('🍪 Configuración personalizada guardada:', this.consent);
+            this.log('🍪 Configuración personalizada guardada: ' + JSON.stringify(this.consent));
         }
         
         openPreferences() {
@@ -519,7 +523,7 @@
         }
         
         updateCheckboxStates() {
-            this.log('🍪 Actualizando checkboxes con estado:', this.consent);
+            this.log('🍪 Actualizando checkboxes con estado: ' + JSON.stringify(this.consent));
             
             const categories = ['analytics', 'marketing', 'functional'];
             
@@ -670,7 +674,7 @@
             
             try {
                 this.log(`🍪 Enviando al endpoint: ${this.config.endpoint}`);
-                this.log(`🍪 Payload:`, payload);
+                this.log(`🍪 Payload: ${JSON.stringify(payload)}`);
                 
                 const response = await fetch(this.config.endpoint, {
                     method: 'POST',
@@ -681,7 +685,7 @@
                 
                 if (response.ok) {
                     const result = await response.json();
-                    this.log('🍪 Datos enviados correctamente:', result);
+                    this.log('🍪 Datos enviados correctamente: ' + JSON.stringify(result));
                 } else {
                     this.log(`🍪 Error enviando al endpoint: ${response.status}`, 'warn');
                 }
@@ -702,7 +706,7 @@
                 }
             });
             window.dispatchEvent(event);
-            this.log('🍪 Consentimiento actualizado:', event.detail);
+            this.log('🍪 Consentimiento actualizado: ' + JSON.stringify(event.detail));
         }
         
         // ===== API PÚBLICA =====
