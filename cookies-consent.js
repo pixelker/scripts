@@ -1,8 +1,8 @@
 /**
- * Universal Cookie Consent System 3.0
+ * Universal Cookie Consent System 3.1
  * Copyright 2025 Pixelker
  * Released under the MIT License
- * Released on: August 15, 2025
+ * Released on: August 18, 2025
  */
 
 (function() {
@@ -10,9 +10,9 @@
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '3.0';
+            this.version = '3.1';
             this.config = {
-                // Endpoint dinámico basado en el dominio actual
+                // Endpoint dinámico con fallback inteligente
                 endpoint: this.buildEndpoint(),
                 
                 // Selectores usando atributos personalizados
@@ -33,7 +33,7 @@
                 
                 // Configuración de cookies
                 cookieName: 'pxl_cookie_consent',
-                cookieExpiry: 365, // días
+                cookieExpiry: 365,
                 
                 // Estados por defecto
                 defaultConsent: {
@@ -44,15 +44,27 @@
                 }
             };
             
+            // Estado de la aplicación
             this.consent = { ...this.config.defaultConsent };
             this.domain = window.location.hostname;
             this.scrollPosition = 0;
             
-            console.log(`🍪 Universal Cookie Consent v${this.version} iniciado`);
-            console.log(`🍪 Dominio: ${this.domain}`);
-            console.log(`🍪 Endpoint: ${this.config.endpoint}`);
+            // Cache para elementos encontrados
+            this.checkboxElements = {
+                analytics: null,
+                marketing: null,
+                functional: null
+            };
+            
+            this.log(`🍪 Universal Cookie Consent v${this.version} iniciado`);
+            this.log(`🍪 Dominio: ${this.domain}`);
+            this.log(`🍪 Endpoint: ${this.config.endpoint}`);
             
             this.init();
+        }
+        
+        log(message, type = 'info') {
+            console[type](`${message}`);
         }
         
         // ===== CONSTRUCCIÓN DINÁMICA DEL ENDPOINT =====
@@ -66,17 +78,20 @@
             for (let script of scripts) {
                 const customEndpoint = script.getAttribute('pxl-consent-endpoint');
                 if (customEndpoint) {
+                    this.log(`🍪 Endpoint personalizado encontrado: ${customEndpoint}`);
                     return customEndpoint;
                 }
             }
             
             // Por defecto: mismo dominio + /kv/cookies
-            return `${protocol}//${hostname}/kv/cookies`;
+            const defaultEndpoint = `${protocol}//${hostname}/kv/cookies`;
+            this.log(`🍪 Endpoint por defecto: ${defaultEndpoint}`);
+            return defaultEndpoint;
         }
         
         // ===== INICIALIZACIÓN =====
         
-        init() {
+        async init() {
             // Configurar Google Consent Mode v2 ANTES de todo
             this.setupConsentMode();
             
@@ -86,21 +101,20 @@
                 this.consent = savedConsent;
                 this.applyConsent();
                 this.hideBanner();
-                console.log('🍪 Consentimiento existente encontrado:', this.consent);
+                this.log('🍪 Consentimiento existente encontrado:', this.consent);
             } else {
                 // Primera visita o consentimiento expirado
                 this.showBanner();
-                console.log('🍪 Primera visita - mostrando banner');
+                this.log('🍪 Primera visita - mostrando banner');
             }
             
             // Configurar event listeners cuando DOM esté listo
-            // Delay para asegurar que los elementos estén listos
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
-                    setTimeout(() => this.setupEventListeners(), 1000);
+                    setTimeout(() => this.setupEventListeners(), 100);
                 });
             } else {
-                setTimeout(() => this.setupEventListeners(), 1000);
+                setTimeout(() => this.setupEventListeners(), 100);
             }
         }
         
@@ -122,12 +136,12 @@
                 'wait_for_update': 500
             });
             
-            console.log('🍪 Google Consent Mode v2 configurado');
+            this.log('🍪 Google Consent Mode v2 configurado');
         }
         
         updateConsentMode() {
             if (typeof gtag === 'undefined') {
-                console.warn('🍪 gtag no disponible - asegúrate de que GA4 esté cargado');
+                this.log('🍪 gtag no disponible - asegúrate de que GA4 esté cargado', 'warn');
                 return;
             }
             
@@ -140,13 +154,13 @@
                 'functionality_storage': this.consent.functional ? 'granted' : 'denied'
             });
             
-            console.log('🍪 Consent Mode actualizado:', this.consent);
+            this.log('🍪 Consent Mode actualizado:', this.consent);
         }
         
         // ===== APLICACIÓN DE CONSENTIMIENTO =====
         
         applyConsent() {
-            console.log('🍪 Aplicando consentimiento:', this.consent);
+            this.log('🍪 Aplicando consentimiento:', this.consent);
             
             // Actualizar Consent Mode
             this.updateConsentMode();
@@ -154,20 +168,14 @@
             // Ejecutar callbacks personalizados si existen
             this.executeCustomCallbacks();
             
-            // Actualizar visualmente los checkboxes (con delay para asegurar DOM listo)
-            setTimeout(() => {
-                this.updateCheckboxStates();
-            }, 100);
+            // Actualizar visualmente los checkboxes
+            this.updateCheckboxStates();
             
             // Disparar evento personalizado
             this.dispatchConsentEvent();
             
-            // Enviar al endpoint (solo una vez, no duplicar)
-            if (!this.consentSent) {
-                this.sendToEndpoint('consent_updated', this.consent);
-                this.consentSent = true;
-                setTimeout(() => { this.consentSent = false; }, 1000);
-            }
+            // Enviar al endpoint
+            this.sendToEndpoint('consent_updated', this.consent);
         }
         
         executeCustomCallbacks() {
@@ -195,6 +203,7 @@
             document.body.style.position = 'fixed';
             document.body.style.top = `-${this.scrollPosition}px`;
             document.body.style.width = '100%';
+            document.body.style.height = '100%';
         }
         
         enableScroll() {
@@ -202,168 +211,193 @@
             document.body.style.removeProperty('position');
             document.body.style.removeProperty('top');
             document.body.style.removeProperty('width');
+            document.body.style.removeProperty('height');
             
             if (this.scrollPosition !== undefined) {
                 window.scrollTo(0, this.scrollPosition);
             }
         }
         
-        // ===== GESTIÓN DE UI =====
+        // ===== GESTIÓN DE UI MEJORADA =====
         
         setupEventListeners() {
             const { selectors } = this.config;
             
-            console.log('🍪 Configurando event listeners...');
+            this.log('🍪 Configurando event listeners...');
             
-            // Primero actualizar los checkboxes con el estado guardado
-            this.updateCheckboxStates();
-            
-            // Botón aceptar todas
-            this.addClickListener(selectors.acceptAllBtn, () => {
-                this.acceptAll();
-                this.closePreferences();
-            });
-            
-            // Botón rechazar todas
-            this.addClickListener(selectors.rejectAllBtn, () => {
-                this.rejectAll();
-                this.closePreferences();
-            });
-            
-            // Botón abrir configuración
-            this.addClickListener(selectors.openPreferencesBtn, () => {
-                this.openPreferences();
-            });
-            
-            // Botón guardar configuración
-            this.addClickListener(selectors.savePreferencesBtn, () => {
-                this.saveCustomConfig();
-                this.closePreferences();
-            });
-            
-            // Botones cerrar
-            this.addClickListener(selectors.closeBtn, () => {
-                this.closePreferences();
-            });
-            
-            // Checkboxes
-            this.setupCheckboxListeners();
-            
-            // Actualizar estado de checkboxes nuevamente después de configurar listeners
-            setTimeout(() => {
-                console.log('🍪 Actualizando checkboxes después de configurar listeners...');
-                this.updateCheckboxStates();
-            }, 500);
-            
-            console.log('🍪 Event listeners configurados');
+            try {
+                // Detectar y cachear elementos de checkbox
+                this.detectWebflowCheckboxes();
+                
+                // Configurar botones principales
+                this.setupButtonListeners();
+                
+                // Configurar checkboxes específicos
+                this.setupCheckboxListeners();
+                
+                // Actualizar estado inicial de checkboxes
+                setTimeout(() => {
+                    this.updateCheckboxStates();
+                }, 200);
+                
+                this.log('🍪 Event listeners configurados');
+                
+            } catch (error) {
+                this.log(`Error configurando event listeners: ${error.message}`, 'error');
+            }
         }
         
-        addClickListener(selector, callback) {
-            const elements = document.querySelectorAll(selector);
-            if (elements.length === 0) {
-                console.warn(`🍪 No se encontraron elementos con selector: ${selector}`);
-                return;
-            }
+        detectWebflowCheckboxes() {
+            const categories = ['analytics', 'marketing', 'functional'];
             
-            elements.forEach(element => {
-                // Remover listeners previos para evitar duplicados
-                element.removeEventListener('click', this.handleClick);
+            categories.forEach(category => {
+                const selector = this.config.selectors[`checkbox${category.charAt(0).toUpperCase() + category.slice(1)}`];
+                const wrapper = document.querySelector(selector);
                 
-                const boundCallback = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    callback();
-                };
+                if (wrapper) {
+                    this.log(`🍪 Detectando estructura para ${category}...`);
+                    
+                    // Estrategia 1: Buscar input directo dentro del wrapper
+                    let input = wrapper.querySelector('input[type="checkbox"]');
+                    let customCheckbox = wrapper.querySelector('.w-checkbox-input');
+                    
+                    // Estrategia 2: Buscar input hermano
+                    if (!input) {
+                        input = wrapper.parentElement?.querySelector('input[type="checkbox"]');
+                        customCheckbox = wrapper.parentElement?.querySelector('.w-checkbox-input');
+                    }
+                    
+                    // Estrategia 3: Buscar input en contenedor padre
+                    if (!input) {
+                        const container = wrapper.closest('.w-form, .form-block, .checkbox-wrapper');
+                        if (container) {
+                            input = container.querySelector('input[type="checkbox"]');
+                            customCheckbox = container.querySelector('.w-checkbox-input');
+                        }
+                    }
+                    
+                    // Estrategia 4: Si el wrapper es directamente el checkbox visual
+                    if (!customCheckbox && wrapper.classList.contains('w-checkbox-input')) {
+                        customCheckbox = wrapper;
+                        input = wrapper.parentElement?.querySelector('input[type="checkbox"]');
+                    }
+                    
+                    this.checkboxElements[category] = {
+                        wrapper: wrapper,
+                        input: input,
+                        customCheckbox: customCheckbox
+                    };
+                    
+                    this.log(`🍪 ${category}: input=${!!input}, customCheckbox=${!!customCheckbox}`);
+                    
+                    if (input) {
+                        this.log(`🍪 Input encontrado para ${category}: ${input.tagName}${input.id ? '#' + input.id : ''}`);
+                    } else {
+                        this.log(`🍪 No se encontró input para ${category}`, 'warn');
+                    }
+                } else {
+                    this.log(`🍪 No se encontró wrapper para ${category}`, 'warn');
+                }
+            });
+        }
+        
+        setupButtonListeners() {
+            const { selectors } = this.config;
+            
+            // Usar event delegation para mejor compatibilidad
+            document.addEventListener('click', (e) => {
+                const target = e.target.closest('[pxl-cookies-consent]');
+                if (!target) return;
                 
-                element.addEventListener('click', boundCallback);
+                const action = target.getAttribute('pxl-cookies-consent');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                switch (action) {
+                    case 'allow':
+                        this.acceptAll();
+                        this.closePreferences();
+                        break;
+                    case 'deny':
+                        this.rejectAll();
+                        this.closePreferences();
+                        break;
+                    case 'open-preferences':
+                        this.openPreferences();
+                        break;
+                    case 'save-preferences':
+                        this.saveCustomConfig();
+                        this.closePreferences();
+                        break;
+                    case 'close':
+                        this.closePreferences();
+                        break;
+                }
             });
         }
         
         setupCheckboxListeners() {
-            const { selectors } = this.config;
+            const categories = ['analytics', 'marketing', 'functional'];
             
-            // Para checkboxes de Webflow (input + div wrapper)
-            this.setupWebflowCheckbox(selectors.checkboxAnalytics, 'analytics');
-            this.setupWebflowCheckbox(selectors.checkboxMarketing, 'marketing');
-            this.setupWebflowCheckbox(selectors.checkboxFunctional, 'functional');
+            categories.forEach(category => {
+                const elements = this.checkboxElements[category];
+                if (!elements) return;
+                
+                // Listener en el input real (si existe)
+                if (elements.input) {
+                    elements.input.addEventListener('change', (e) => {
+                        this.consent[category] = e.target.checked;
+                        this.updateWebflowCheckboxVisual(elements.customCheckbox, e.target.checked);
+                        this.log(`🍪 Checkbox ${category} cambiado a: ${e.target.checked}`);
+                    });
+                }
+                
+                // Listener en el checkbox visual (para casos donde no hay input real)
+                if (elements.customCheckbox) {
+                    elements.customCheckbox.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Togglear el estado
+                        this.consent[category] = !this.consent[category];
+                        
+                        // Actualizar input real si existe
+                        if (elements.input) {
+                            elements.input.checked = this.consent[category];
+                        }
+                        
+                        // Actualizar visual
+                        this.updateWebflowCheckboxVisual(elements.customCheckbox, this.consent[category]);
+                        
+                        this.log(`🍪 Checkbox visual ${category} cambiado a: ${this.consent[category]}`);
+                    });
+                }
+                
+                // Listener en el wrapper como fallback
+                if (elements.wrapper && !elements.input && !elements.customCheckbox) {
+                    elements.wrapper.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        this.consent[category] = !this.consent[category];
+                        this.updateWebflowCheckboxVisual(elements.wrapper, this.consent[category]);
+                        
+                        this.log(`🍪 Checkbox wrapper ${category} cambiado a: ${this.consent[category]}`);
+                    });
+                }
+            });
         }
         
-        setupWebflowCheckbox(selector, category) {
-            const wrapper = document.querySelector(selector);
-            if (!wrapper) {
-                console.warn(`🍪 No se encontró wrapper para ${category}`);
-                return;
+        updateWebflowCheckboxVisual(element, isChecked) {
+            if (!element) return;
+            
+            if (isChecked) {
+                element.classList.add('w--redirected-checked');
+                element.setAttribute('data-w-redirected', 'true');
+            } else {
+                element.classList.remove('w--redirected-checked');
+                element.setAttribute('data-w-redirected', 'false');
             }
-            
-            // Buscar el input real dentro del wrapper
-            const input = wrapper.querySelector('input[type="checkbox"]');
-            const customCheckbox = wrapper.querySelector('.w-checkbox-input');
-            
-            if (!input) {
-                console.warn(`🍪 No se encontró input para ${category}`);
-                return;
-            }
-            
-            // Establecer el estado inicial desde el consentimiento guardado
-            input.checked = this.consent[category];
-            
-            // Actualizar el checkbox visual de Webflow
-            if (customCheckbox) {
-                if (this.consent[category]) {
-                    customCheckbox.classList.add('w--redirected-checked');
-                    customCheckbox.dataset.wRedirected = 'true';
-                } else {
-                    customCheckbox.classList.remove('w--redirected-checked');
-                    customCheckbox.dataset.wRedirected = 'false';
-                }
-            }
-            
-            // Limpiar listeners previos
-            const newInput = input.cloneNode(true);
-            input.parentNode.replaceChild(newInput, input);
-            
-            // Añadir listener al nuevo input
-            newInput.addEventListener('change', (e) => {
-                this.consent[category] = e.target.checked;
-                
-                // Actualizar visual del custom checkbox
-                if (customCheckbox) {
-                    if (e.target.checked) {
-                        customCheckbox.classList.add('w--redirected-checked');
-                        customCheckbox.dataset.wRedirected = 'true';
-                    } else {
-                        customCheckbox.classList.remove('w--redirected-checked');
-                        customCheckbox.dataset.wRedirected = 'false';
-                    }
-                }
-                
-                console.log(`🍪 Checkbox ${category} cambiado a:`, e.target.checked);
-            });
-            
-            // Manejar clicks en el checkbox visual
-            if (customCheckbox) {
-                customCheckbox.style.cursor = 'pointer';
-                customCheckbox.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    newInput.checked = !newInput.checked;
-                    newInput.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-            }
-            
-            // Manejar clicks en el label
-            const label = wrapper.querySelector('.w-checkbox-label');
-            if (label) {
-                label.style.cursor = 'pointer';
-                label.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    newInput.checked = !newInput.checked;
-                    newInput.dispatchEvent(new Event('change', { bubbles: true }));
-                });
-            }
-            
-            console.log(`🍪 Checkbox ${category} configurado, estado inicial:`, this.consent[category]);
         }
         
         // ===== ACCIONES DEL USUARIO =====
@@ -379,13 +413,10 @@
             this.saveConsent();
             this.applyConsent();
             this.hideBanner();
-            
-            // Actualizar checkboxes inmediatamente
             this.updateCheckboxStates();
             
             this.sendToEndpoint('accept_all', this.consent);
-            
-            console.log('🍪 Usuario aceptó todas las cookies');
+            this.log('🍪 Usuario aceptó todas las cookies');
         }
         
         rejectAll() {
@@ -401,38 +432,40 @@
             this.hideBanner();
             
             this.sendToEndpoint('reject_all', this.consent);
-            
-            console.log('🍪 Usuario rechazó cookies opcionales');
+            this.log('🍪 Usuario rechazó cookies opcionales');
         }
         
         saveCustomConfig() {
-            const { selectors } = this.config;
-            
-            // Leer estado de los inputs reales
-            const analyticsInput = document.querySelector(selectors.checkboxAnalytics + ' input[type="checkbox"]');
-            const marketingInput = document.querySelector(selectors.checkboxMarketing + ' input[type="checkbox"]');
-            const functionalInput = document.querySelector(selectors.checkboxFunctional + ' input[type="checkbox"]');
-            
-            this.consent = {
+            // Leer estado directamente del objeto consent que se actualiza en tiempo real
+            const newConsent = {
                 necessary: true,
-                analytics: analyticsInput?.checked || false,
-                marketing: marketingInput?.checked || false,
-                functional: functionalInput?.checked || false
+                analytics: this.consent.analytics,
+                marketing: this.consent.marketing,
+                functional: this.consent.functional
             };
+            
+            // Solo actualizar si hay cambios
+            let hasChanges = false;
+            Object.keys(newConsent).forEach(key => {
+                if (this.consent[key] !== newConsent[key]) {
+                    hasChanges = true;
+                }
+            });
+            
+            this.consent = newConsent;
             
             this.saveConsent();
             this.applyConsent();
             this.hideBanner();
             
             this.sendToEndpoint('custom_config', this.consent);
-            
-            console.log('🍪 Configuración personalizada guardada:', this.consent);
+            this.log('🍪 Configuración personalizada guardada:', this.consent);
         }
         
         openPreferences() {
             const preferences = document.querySelector(this.config.selectors.preferences);
             if (preferences) {
-                // Guardar las clases originales para evitar conflictos con dark mode
+                // Guardar estado original para restaurar después
                 this.originalBodyClasses = document.body.className;
                 this.originalHtmlClasses = document.documentElement.className;
                 
@@ -441,12 +474,10 @@
                 
                 this.disableScroll();
                 
-                // Forzar actualización de checkboxes después de mostrar
-                setTimeout(() => {
-                    this.updateCheckboxStates();
-                }, 100);
+                // Actualizar checkboxes después de mostrar
+                setTimeout(() => this.updateCheckboxStates(), 100);
                 
-                console.log('🍪 Panel de preferencias abierto');
+                this.log('🍪 Panel de preferencias abierto');
             }
         }
         
@@ -456,7 +487,7 @@
                 preferences.style.display = 'none';
                 preferences.classList.remove('pxl-cookies-modal-active');
                 
-                // Restaurar clases originales si fueron guardadas
+                // Restaurar clases originales
                 if (this.originalBodyClasses !== undefined) {
                     document.body.className = this.originalBodyClasses;
                 }
@@ -465,7 +496,7 @@
                 }
                 
                 this.enableScroll();
-                console.log('🍪 Panel de preferencias cerrado');
+                this.log('🍪 Panel de preferencias cerrado');
             }
         }
         
@@ -474,7 +505,7 @@
             if (banner) {
                 banner.style.display = 'block';
                 banner.classList.add('pxl-cookies-banner-active');
-                console.log('🍪 Banner mostrado');
+                this.log('🍪 Banner mostrado');
             }
         }
         
@@ -483,64 +514,38 @@
             if (banner) {
                 banner.style.display = 'none';
                 banner.classList.remove('pxl-cookies-banner-active');
-                console.log('🍪 Banner ocultado');
+                this.log('🍪 Banner ocultado');
             }
         }
         
         updateCheckboxStates() {
-            const { selectors } = this.config;
+            this.log('🍪 Actualizando checkboxes con estado:', this.consent);
             
-            console.log('🍪 Actualizando checkboxes con estado:', this.consent);
+            const categories = ['analytics', 'marketing', 'functional'];
             
-            // Usar requestAnimationFrame para asegurar que el DOM esté actualizado
-            requestAnimationFrame(() => {
-                // Actualizar inputs reales y checkboxes visuales
-                this.updateWebflowCheckbox(selectors.checkboxAnalytics, this.consent.analytics);
-                this.updateWebflowCheckbox(selectors.checkboxMarketing, this.consent.marketing);
-                this.updateWebflowCheckbox(selectors.checkboxFunctional, this.consent.functional);
+            categories.forEach(category => {
+                const elements = this.checkboxElements[category];
+                if (!elements) return;
                 
-                // Forzar re-render de Webflow si está disponible
-                if (window.Webflow && window.Webflow.require) {
-                    try {
-                        const ix2 = window.Webflow.require('ix2');
-                        if (ix2 && ix2.init) {
-                            ix2.init();
-                        }
-                    } catch (e) {
-                        // Webflow IX2 no disponible, no es crítico
-                    }
+                const isChecked = this.consent[category];
+                
+                // Actualizar input real
+                if (elements.input) {
+                    elements.input.checked = isChecked;
                 }
+                
+                // Actualizar checkbox visual
+                if (elements.customCheckbox) {
+                    this.updateWebflowCheckboxVisual(elements.customCheckbox, isChecked);
+                }
+                
+                // Fallback al wrapper
+                if (!elements.input && !elements.customCheckbox && elements.wrapper) {
+                    this.updateWebflowCheckboxVisual(elements.wrapper, isChecked);
+                }
+                
+                this.log(`🍪 Checkbox ${category} actualizado a: ${isChecked}`);
             });
-        }
-        
-        updateWebflowCheckbox(selector, isChecked) {
-            const wrapper = document.querySelector(selector);
-            if (!wrapper) {
-                console.warn(`🍪 No se encontró el wrapper para: ${selector}`);
-                return;
-            }
-            
-            const input = wrapper.querySelector('input[type="checkbox"]');
-            const customCheckbox = wrapper.querySelector('.w-checkbox-input');
-            
-            if (input) {
-                input.checked = isChecked;
-                // Disparar evento change para que Webflow lo detecte
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-            
-            if (customCheckbox) {
-                // Forzar actualización visual
-                if (isChecked) {
-                    customCheckbox.classList.add('w--redirected-checked');
-                    customCheckbox.dataset.wRedirected = 'true';
-                } else {
-                    customCheckbox.classList.remove('w--redirected-checked');
-                    customCheckbox.dataset.wRedirected = 'false';
-                }
-            }
-            
-            console.log(`🍪 Checkbox ${selector} actualizado a: ${isChecked}`);
         }
         
         // ===== GESTIÓN DE ALMACENAMIENTO LOCAL =====
@@ -556,7 +561,7 @@
             const expires = new Date();
             expires.setTime(expires.getTime() + (this.config.cookieExpiry * 24 * 60 * 60 * 1000));
             
-            // Guardar en cookie con path y dominio correctos
+            // Cookie con configuración optimizada
             const cookieString = `${this.config.cookieName}=${encodeURIComponent(JSON.stringify(consentData))}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${window.location.protocol === 'https:' ? '; Secure' : ''}`;
             
             document.cookie = cookieString;
@@ -565,10 +570,10 @@
             try {
                 localStorage.setItem(this.config.cookieName, JSON.stringify(consentData));
             } catch (e) {
-                console.warn('🍪 No se pudo guardar en localStorage:', e);
+                this.log(`No se pudo guardar en localStorage: ${e.message}`, 'warn');
             }
             
-            console.log(`🍪 Consentimiento guardado - expira en ${this.config.cookieExpiry} días`);
+            this.log(`🍪 Consentimiento guardado - expira en ${this.config.cookieExpiry} días`);
         }
         
         getSavedConsent() {
@@ -586,7 +591,7 @@
                         const expiry = data.timestamp + (this.config.cookieExpiry * 24 * 60 * 60 * 1000);
                         
                         if (now < expiry) {
-                            console.log('🍪 Cookie encontrada y válida');
+                            this.log('🍪 Cookie encontrada y válida');
                             return {
                                 necessary: data.necessary !== undefined ? data.necessary : true,
                                 analytics: data.analytics || false,
@@ -594,19 +599,19 @@
                                 functional: data.functional || false
                             };
                         } else {
-                            console.log('🍪 Cookie expirada');
+                            this.log('🍪 Cookie expirada');
                             this.clearExpiredConsent();
                             return null;
                         }
                     } catch (e) {
-                        console.error('🍪 Error parsing cookie:', e);
+                        this.log(`Error parsing cookie: ${e.message}`, 'error');
                         this.clearExpiredConsent();
                         return null;
                     }
                 }
             }
             
-            // Si no hay cookie, intentar localStorage como backup
+            // Fallback a localStorage
             try {
                 const stored = localStorage.getItem(this.config.cookieName);
                 if (stored) {
@@ -615,23 +620,23 @@
                     const expiry = data.timestamp + (this.config.cookieExpiry * 24 * 60 * 60 * 1000);
                     
                     if (now < expiry) {
-                        console.log('🍪 Datos encontrados en localStorage');
-                        // Restaurar la cookie desde localStorage
+                        this.log('🍪 Datos encontrados en localStorage');
+                        // Restaurar la cookie
                         this.consent = {
                             necessary: data.necessary !== undefined ? data.necessary : true,
                             analytics: data.analytics || false,
                             marketing: data.marketing || false,
                             functional: data.functional || false
                         };
-                        this.saveConsent(); // Recrear la cookie
+                        this.saveConsent();
                         return this.consent;
                     }
                 }
             } catch (e) {
-                console.warn('🍪 No se pudo leer localStorage:', e);
+                this.log(`Error leyendo localStorage: ${e.message}`, 'warn');
             }
             
-            console.log('🍪 No se encontró consentimiento guardado');
+            this.log('🍪 No se encontró consentimiento guardado');
             return null;
         }
         
@@ -643,7 +648,7 @@
             try {
                 localStorage.removeItem(this.config.cookieName);
             } catch (e) {
-                console.warn('🍪 No se pudo limpiar localStorage:', e);
+                this.log(`Error limpiando localStorage: ${e.message}`, 'warn');
             }
         }
         
@@ -664,26 +669,24 @@
             };
             
             try {
-                console.log('🍪 Enviando al endpoint:', this.config.endpoint);
-                console.log('🍪 Payload:', payload);
+                this.log(`🍪 Enviando al endpoint: ${this.config.endpoint}`);
+                this.log(`🍪 Payload:`, payload);
                 
                 const response = await fetch(this.config.endpoint, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
                     mode: 'cors'
                 });
                 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log('🍪 Datos enviados correctamente:', result);
+                    this.log('🍪 Datos enviados correctamente:', result);
                 } else {
-                    console.warn('🍪 Error enviando al endpoint:', response.status);
+                    this.log(`🍪 Error enviando al endpoint: ${response.status}`, 'warn');
                 }
             } catch (error) {
-                console.warn('🍪 Error enviando al endpoint:', error.message);
+                this.log(`🍪 Error enviando al endpoint: ${error.message}`, 'warn');
             }
         }
         
@@ -698,8 +701,8 @@
                     version: this.version
                 }
             });
-            
             window.dispatchEvent(event);
+            this.log('🍪 Consentimiento actualizado:', event.detail);
         }
         
         // ===== API PÚBLICA =====
@@ -725,22 +728,20 @@
                 version: this.version,
                 domain: this.domain,
                 endpoint: this.config.endpoint,
-                consent: this.consent
+                consent: this.consent,
+                checkboxElements: this.checkboxElements
             };
         }
         
-        // Método público para forzar actualización de checkboxes
         forceUpdateCheckboxes() {
-            console.log('🍪 Forzando actualización de checkboxes...');
+            this.log('🍪 Forzando actualización de checkboxes...');
             this.updateCheckboxStates();
         }
     }
     
     // ===== INICIALIZACIÓN GLOBAL =====
     
-    // Crear instancia global
     function initCookieConsent() {
-        // Verificar si ya existe
         if (window.PxlCookieConsent) {
             console.log('⚠️ Cookie consent ya inicializado');
             return;
@@ -748,51 +749,20 @@
         
         window.PxlCookieConsent = new UniversalCookieConsent();
         
-        // ===== FUNCIONES GLOBALES DE CONVENIENCIA =====
+        // API global simplificada
+        window.showCookiePreferences = () => window.PxlCookieConsent?.showPreferences();
+        window.hasCookieConsent = (category) => window.PxlCookieConsent?.hasConsent(category) || false;
+        window.getCookieConsentStatus = () => window.PxlCookieConsent?.getStatus() || null;
+        window.forceUpdateCookieCheckboxes = () => window.PxlCookieConsent?.forceUpdateCheckboxes();
         
-        window.showCookiePreferences = function() {
-            if (window.PxlCookieConsent) {
-                window.PxlCookieConsent.showPreferences();
-            }
-        };
-        
-        window.hasCookieConsent = function(category) {
-            if (window.PxlCookieConsent) {
-                return window.PxlCookieConsent.hasConsent(category);
-            }
-            return false;
-        };
-        
-        window.getCookieConsentStatus = function() {
-            if (window.PxlCookieConsent) {
-                return window.PxlCookieConsent.getStatus();
-            }
-            return null;
-        };
-        
-        window.forceUpdateCookieCheckboxes = function() {
-            if (window.PxlCookieConsent) {
-                window.PxlCookieConsent.forceUpdateCheckboxes();
-            }
-        };
-        
-        // Event listener global para cambios de consentimiento
-        window.addEventListener('pxlCookieConsentUpdated', function(event) {
-            console.log('🍪 Consentimiento actualizado:', event.detail);
-        });
-        
-        console.log('🍪 Universal Cookie Consent System v3.0 cargado correctamente');
+        console.log('🍪 Universal Cookie Consent System v3.1 cargado correctamente');
     }
     
-    // Inicialización simplificada - NO esperar a Webflow indefinidamente
+    // Inicialización inmediata si DOM está listo, sino esperar
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
-            // Pequeño delay para dar tiempo a otros scripts
-            setTimeout(initCookieConsent, 500);
-        });
+        document.addEventListener('DOMContentLoaded', () => setTimeout(initCookieConsent, 100));
     } else {
-        // DOM ya está listo, inicializar con pequeño delay
-        setTimeout(initCookieConsent, 500);
+        setTimeout(initCookieConsent, 100);
     }
     
 })();
