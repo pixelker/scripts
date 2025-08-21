@@ -1,5 +1,5 @@
 /**
- * Universal Cookie Consent System 4.3
+ * Universal Cookie Consent System 4.4
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 18, 2025
@@ -10,7 +10,7 @@
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '4.3';
+            this.version = '4.4';
             this.config = {
                 // Endpoint dinámico con fallback inteligente
                 endpoint: this.buildEndpoint(),
