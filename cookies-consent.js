@@ -1067,7 +1067,7 @@
         window.getCookieConsentStatus = () => window.PxlCookieConsent?.getStatus() || null;
         window.forceUpdateCookieCheckboxes = () => window.PxlCookieConsent?.forceUpdateWebflowElements();
         
-        console.log(`🍪 Universal Cookie Consent System v.${this.version} Enterprise cargado correctamente`);
+        console.log(`🍪 Universal Cookie Consent System v.4.4 Enterprise cargado correctamente`);
     }
     
     // Inicialización inmediata si DOM está listo, sino esperar
