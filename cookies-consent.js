@@ -1,5 +1,5 @@
 /**
- * Universal Cookie Consent System 4.4
+ * Universal Cookie Consent System 4.5
  * Copyright 2025 Pixelker
  * Released under the MIT License
  * Released on: August 18, 2025
@@ -10,7 +10,7 @@
     
     class UniversalCookieConsent {
         constructor() {
-            this.version = '4.4';
+            this.version = '4.5';
             this.config = {
                 // Endpoint dinámico con fallback inteligente
                 endpoint: this.buildEndpoint(),
@@ -1067,7 +1067,7 @@
         window.getCookieConsentStatus = () => window.PxlCookieConsent?.getStatus() || null;
         window.forceUpdateCookieCheckboxes = () => window.PxlCookieConsent?.forceUpdateWebflowElements();
         
-        console.log(`🍪 Universal Cookie Consent System v.4.4 Enterprise cargado correctamente`);
+        console.log('🍪 Universal Cookie Consent System v.4.5 Enterprise cargado correctamente');
     }
     
     // Inicialización inmediata si DOM está listo, sino esperar
