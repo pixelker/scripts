@@ -62,7 +62,7 @@
             // Debug mode
             this.debug = this.isDebugMode();
             
-            this.log(`🍪 Universal Cookie Consent v${this.version} iniciado`);
+            this.log(`🍪 Universal Cookie Consent v.${this.version} iniciado`);
             this.log(`🍪 Dominio: ${this.domain}`);
             this.log(`🍪 Endpoint: ${this.config.endpoint}`);
             
@@ -1067,7 +1067,7 @@
         window.getCookieConsentStatus = () => window.PxlCookieConsent?.getStatus() || null;
         window.forceUpdateCookieCheckboxes = () => window.PxlCookieConsent?.forceUpdateWebflowElements();
         
-        console.log('🍪 Universal Cookie Consent System v4.1 Enterprise cargado correctamente');
+        console.log(`🍪 Universal Cookie Consent System v.${this.version} Enterprise cargado correctamente`);
     }
     
     // Inicialización inmediata si DOM está listo, sino esperar
